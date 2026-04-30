@@ -1,11 +1,1 @@
-{
-  "current": {
-    "distance_km": 0,
-    "elapsed_s": 0,
-    "avg_speed_kmh": 0,
-    "lat": 0,
-    "lon": 0,
-    "updated": "init"
-  },
-  "history": []
-}
+{"current": {"distance_km": 1.83829343318939, "elapsed_s": 0, "avg_speed_kmh": 0.0, "lat": 50.08270458598217, "lon": -5.710617388493344, "updated": "2026-04-30T22:02:01.406687+00:00"}, "history": [{"t": "2026-04-30T22:02:01.406687+00:00", "distance_km": 1.83829343318939, "elapsed_s": 0, "avg_speed_kmh": 0.0, "lat": 50.08270458598217, "lon": -5.710617388493344}]}
