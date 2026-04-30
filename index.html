@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <title>Public Tracker</title>
+  <title>Hamster Tracker</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
   <link
@@ -17,88 +17,139 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
   <style>
+    :root {
+      --strava-orange: #fc4c02;
+      --bg: #f5f5f5;
+      --card: #ffffff;
+      --text: #242428;
+      --muted: #8a8a94;
+      --border: #ececf0;
+    }
+
+    * { box-sizing: border-box; }
+
     body {
-      font-family: system-ui, sans-serif;
+      font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
       margin: 0;
+      background: var(--bg);
+      color: var(--text);
+    }
+
+    .topbar {
+      background: #111;
+      color: #fff;
+      border-bottom: 3px solid var(--strava-orange);
+      padding: 0.9rem 1.25rem;
+      font-weight: 700;
+      letter-spacing: 0.2px;
+    }
+
+    .topbar span {
+      color: var(--strava-orange);
+      margin-right: 0.4rem;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
       padding: 1rem;
-      background: #f6f7f9;
-      color: #111;
     }
-    h1 {
-      margin-top: 0;
+
+    .meta {
+      margin: 0.5rem 0 1rem;
+      font-size: 0.88rem;
+      color: var(--muted);
     }
+
     .grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-      gap: 1rem;
+      gap: 0.85rem;
       margin-bottom: 1rem;
     }
+
     .card {
-      background: white;
-      border-radius: 12px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
       padding: 1rem;
-      box-shadow: 0 1px 4px rgba(0,0,0,0.08);
     }
+
     .metric-label {
-      font-size: 0.9rem;
-      color: #555;
-    }
-    .metric-value {
-      font-size: 2rem;
+      font-size: 0.78rem;
       font-weight: 700;
-      margin-top: 0.25rem;
+      text-transform: uppercase;
+      letter-spacing: 0.7px;
+      color: var(--muted);
+      margin-bottom: 0.35rem;
     }
+
+    .metric-value {
+      font-size: 1.8rem;
+      font-weight: 800;
+      line-height: 1.15;
+    }
+
+    .metric-value.emphasis { color: var(--strava-orange); }
+
+    .panel-title {
+      font-size: 1rem;
+      font-weight: 700;
+      margin: 0 0 0.8rem;
+    }
+
     #map {
-      height: 420px;
-      border-radius: 12px;
+      height: 430px;
+      border-radius: 8px;
       overflow: hidden;
     }
+
     canvas {
       width: 100% !important;
-      height: 320px !important;
-    }
-    .small {
-      color: #666;
-      font-size: 0.9rem;
+      height: 310px !important;
     }
   </style>
 </head>
 <body>
-  <h1>Public Tracker</h1>
-  <p class="small">Auto-refreshes every 30 seconds.</p>
+  <div class="topbar"><span>STRAVA</span>HAMSTER TRACKER</div>
 
-  <div class="grid">
-    <div class="card">
-      <div class="metric-label">Distance</div>
-      <div id="distance" class="metric-value">--</div>
-    </div>
-    <div class="card">
-      <div class="metric-label">Elapsed time</div>
-      <div id="elapsed" class="metric-value">--</div>
-    </div>
-    <div class="card">
-      <div class="metric-label">Average speed</div>
-      <div id="avgSpeed" class="metric-value">--</div>
-    </div>
-    <div class="card">
-      <div class="metric-label">Updated</div>
-      <div id="updated" class="metric-value" style="font-size:1.2rem;">--</div>
-    </div>
-  </div>
+  <main class="container">
+    <p class="meta">Auto-refreshes every 30 seconds.</p>
 
-  <div class="card" style="margin-bottom: 1rem;">
-    <div id="map"></div>
-  </div>
+    <section class="grid">
+      <div class="card">
+        <div class="metric-label">Distance</div>
+        <div id="distance" class="metric-value emphasis">--</div>
+      </div>
+      <div class="card">
+        <div class="metric-label">Elapsed time</div>
+        <div id="elapsed" class="metric-value">--</div>
+      </div>
+      <div class="card">
+        <div class="metric-label">Average speed</div>
+        <div id="avgSpeed" class="metric-value">--</div>
+      </div>
+      <div class="card">
+        <div class="metric-label">Updated</div>
+        <div id="updated" class="metric-value" style="font-size:1.1rem;">--</div>
+      </div>
+    </section>
 
-  <div class="card" style="margin-bottom: 1rem;">
-    <h2>Distance over time</h2>
-    <canvas id="distanceChart"></canvas>
-  </div>
+    <section class="card" style="margin-bottom: 1rem;">
+      <h2 class="panel-title">Route Map</h2>
+      <div id="map"></div>
+    </section>
 
-  <div class="card">
-    <h2>Average speed over time</h2>
-    <canvas id="speedChart"></canvas>
-  </div>
+    <section class="card" style="margin-bottom: 1rem;">
+      <h2 class="panel-title">Distance Over Time</h2>
+      <canvas id="distanceChart"></canvas>
+    </section>
+
+    <section class="card">
+      <h2 class="panel-title">Average Speed Over Time</h2>
+      <canvas id="speedChart"></canvas>
+    </section>
+  </main>
 
   <script>
     const dataUrl = "./hamster-data.json";
@@ -134,7 +185,7 @@
       document.getElementById(id).textContent = text;
     }
 
-    function buildOrUpdateChart(existingChart, canvasId, label, labels, values) {
+    function buildOrUpdateChart(existingChart, canvasId, label, labels, values, color) {
       if (existingChart) {
         existingChart.data.labels = labels;
         existingChart.data.datasets[0].data = values;
@@ -149,18 +200,28 @@
           datasets: [{
             label: label,
             data: values,
-            tension: 0.2
+            borderColor: color,
+            backgroundColor: color + "22",
+            fill: true,
+            pointRadius: 2,
+            pointHoverRadius: 4,
+            tension: 0.25
           }]
         },
         options: {
           animation: false,
           responsive: true,
           maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false }
+          },
           scales: {
             x: {
-              ticks: {
-                maxTicksLimit: 8
-              }
+              ticks: { maxTicksLimit: 8 },
+              grid: { color: "#f0f1f4" }
+            },
+            y: {
+              grid: { color: "#f0f1f4" }
             }
           }
         }
@@ -188,7 +249,7 @@
         const latest = latlngs[latlngs.length - 1];
 
         if (!polyline) {
-          polyline = L.polyline(latlngs).addTo(map);
+          polyline = L.polyline(latlngs, { color: "#fc4c02", weight: 4 }).addTo(map);
         } else {
           polyline.setLatLngs(latlngs);
         }
@@ -217,7 +278,8 @@
         "distanceChart",
         "Distance (km)",
         labels,
-        history.map(p => Number(p.distance_km || 0))
+        history.map(p => Number(p.distance_km || 0)),
+        "#fc4c02"
       );
 
       speedChart = buildOrUpdateChart(
@@ -225,7 +287,8 @@
         "speedChart",
         "Average speed (km/h)",
         labels,
-        history.map(p => Number(p.avg_speed_kmh || 0))
+        history.map(p => Number(p.avg_speed_kmh || 0)),
+        "#1f6feb"
       );
     }
 
