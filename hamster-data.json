@@ -1,0 +1,11 @@
+{
+  "current": {
+    "distance_km": 0,
+    "elapsed_s": 0,
+    "avg_speed_kmh": 0,
+    "lat": 0,
+    "lon": 0,
+    "updated": "init"
+  },
+  "history": []
+}

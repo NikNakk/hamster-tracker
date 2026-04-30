@@ -1,0 +1,244 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Public Tracker</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    crossorigin=""
+  />
+  <script
+    src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+    crossorigin=""
+  ></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      margin: 0;
+      padding: 1rem;
+      background: #f6f7f9;
+      color: #111;
+    }
+    h1 {
+      margin-top: 0;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 1rem;
+      margin-bottom: 1rem;
+    }
+    .card {
+      background: white;
+      border-radius: 12px;
+      padding: 1rem;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+    }
+    .metric-label {
+      font-size: 0.9rem;
+      color: #555;
+    }
+    .metric-value {
+      font-size: 2rem;
+      font-weight: 700;
+      margin-top: 0.25rem;
+    }
+    #map {
+      height: 420px;
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    canvas {
+      width: 100% !important;
+      height: 320px !important;
+    }
+    .small {
+      color: #666;
+      font-size: 0.9rem;
+    }
+  </style>
+</head>
+<body>
+  <h1>Public Tracker</h1>
+  <p class="small">Auto-refreshes every 30 seconds.</p>
+
+  <div class="grid">
+    <div class="card">
+      <div class="metric-label">Distance</div>
+      <div id="distance" class="metric-value">--</div>
+    </div>
+    <div class="card">
+      <div class="metric-label">Elapsed time</div>
+      <div id="elapsed" class="metric-value">--</div>
+    </div>
+    <div class="card">
+      <div class="metric-label">Average speed</div>
+      <div id="avgSpeed" class="metric-value">--</div>
+    </div>
+    <div class="card">
+      <div class="metric-label">Updated</div>
+      <div id="updated" class="metric-value" style="font-size:1.2rem;">--</div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-bottom: 1rem;">
+    <div id="map"></div>
+  </div>
+
+  <div class="card" style="margin-bottom: 1rem;">
+    <h2>Distance over time</h2>
+    <canvas id="distanceChart"></canvas>
+  </div>
+
+  <div class="card">
+    <h2>Average speed over time</h2>
+    <canvas id="speedChart"></canvas>
+  </div>
+
+  <script>
+    const dataUrl = "./public-tracker.json";
+
+    const map = L.map("map");
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      maxZoom: 19,
+      attribution: "&copy; OpenStreetMap contributors"
+    }).addTo(map);
+
+    let marker = null;
+    let polyline = null;
+    let distanceChart = null;
+    let speedChart = null;
+    let firstLoad = true;
+
+    function formatElapsed(seconds) {
+      const s = Math.max(0, Number(seconds || 0));
+      const h = Math.floor(s / 3600);
+      const m = Math.floor((s % 3600) / 60);
+      const sec = s % 60;
+      if (h > 0) return `${h}h ${m}m ${sec}s`;
+      return `${m}m ${sec}s`;
+    }
+
+    function formatUpdated(ts) {
+      const d = new Date(ts);
+      if (Number.isNaN(d.getTime())) return ts || "--";
+      return d.toLocaleString();
+    }
+
+    function setMetric(id, text) {
+      document.getElementById(id).textContent = text;
+    }
+
+    function buildOrUpdateChart(existingChart, canvasId, label, labels, values) {
+      if (existingChart) {
+        existingChart.data.labels = labels;
+        existingChart.data.datasets[0].data = values;
+        existingChart.update();
+        return existingChart;
+      }
+
+      return new Chart(document.getElementById(canvasId), {
+        type: "line",
+        data: {
+          labels: labels,
+          datasets: [{
+            label: label,
+            data: values,
+            tension: 0.2
+          }]
+        },
+        options: {
+          animation: false,
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            x: {
+              ticks: {
+                maxTicksLimit: 8
+              }
+            }
+          }
+        }
+      });
+    }
+
+    async function refresh() {
+      const res = await fetch(dataUrl + "?t=" + Date.now(), { cache: "no-store" });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+
+      const current = data.current || {};
+      const history = Array.isArray(data.history) ? data.history : [];
+
+      setMetric("distance", `${Number(current.distance_km || 0).toFixed(2)} km`);
+      setMetric("elapsed", formatElapsed(current.elapsed_s));
+      setMetric("avgSpeed", `${Number(current.avg_speed_kmh || 0).toFixed(1)} km/h`);
+      setMetric("updated", formatUpdated(current.updated));
+
+      const latlngs = history
+        .filter(p => Number.isFinite(Number(p.lat)) && Number.isFinite(Number(p.lon)))
+        .map(p => [Number(p.lat), Number(p.lon)]);
+
+      if (latlngs.length) {
+        const latest = latlngs[latlngs.length - 1];
+
+        if (!polyline) {
+          polyline = L.polyline(latlngs).addTo(map);
+        } else {
+          polyline.setLatLngs(latlngs);
+        }
+
+        if (!marker) {
+          marker = L.marker(latest).addTo(map);
+        } else {
+          marker.setLatLng(latest);
+        }
+
+        if (firstLoad) {
+          map.fitBounds(polyline.getBounds(), { padding: [20, 20] });
+          firstLoad = false;
+        } else {
+          map.panTo(latest);
+        }
+      }
+
+      const labels = history.map(p => {
+        const d = new Date(p.t);
+        return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+      });
+
+      distanceChart = buildOrUpdateChart(
+        distanceChart,
+        "distanceChart",
+        "Distance (km)",
+        labels,
+        history.map(p => Number(p.distance_km || 0))
+      );
+
+      speedChart = buildOrUpdateChart(
+        speedChart,
+        "speedChart",
+        "Average speed (km/h)",
+        labels,
+        history.map(p => Number(p.avg_speed_kmh || 0))
+      );
+    }
+
+    async function loop() {
+      try {
+        await refresh();
+      } catch (err) {
+        console.error(err);
+      }
+    }
+
+    loop();
+    setInterval(loop, 30000);
+  </script>
+</body>
+</html>
