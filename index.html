@@ -181,14 +181,31 @@
       return d.toLocaleString();
     }
 
-    function formatChartLabel(ts) {
-      const d = new Date(ts);
-      if (Number.isNaN(d.getTime())) return "--";
-      return d.toLocaleString([], {
-        month: "short",
-        day: "numeric",
-        hour: "2-digit",
-        minute: "2-digit"
+    function formatTickTime(d) {
+      return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false });
+    }
+
+    function formatTickDate(d) {
+      return d.toLocaleDateString([], { month: "short", day: "numeric" });
+    }
+
+    function shouldShowSixHourTick(date) {
+      return date.getUTCMinutes() === 0 && date.getUTCSeconds() === 0 && date.getUTCHours() % 6 === 0;
+    }
+
+    function buildSixHourTickState(labels) {
+      const shownDays = new Set();
+      return labels.map(ts => {
+        const d = new Date(ts);
+        if (Number.isNaN(d.getTime()) || !shouldShowSixHourTick(d)) {
+          return null;
+        }
+
+        const dayKey = `${d.getUTCFullYear()}-${d.getUTCMonth()}-${d.getUTCDate()}`;
+        const dateLabel = shownDays.has(dayKey) ? "" : formatTickDate(d);
+        shownDays.add(dayKey);
+
+        return [formatTickTime(d), dateLabel];
       });
     }
 
@@ -197,9 +214,14 @@
     }
 
     function buildOrUpdateChart(existingChart, canvasId, label, labels, values, color) {
+      const sixHourTickState = buildSixHourTickState(labels);
       if (existingChart) {
         existingChart.data.labels = labels;
         existingChart.data.datasets[0].data = values;
+        existingChart.options.scales.x.ticks.callback = function(value) {
+          const idx = Number(value);
+          return sixHourTickState[idx] || "";
+        };
         existingChart.update();
         return existingChart;
       }
@@ -228,7 +250,14 @@
           },
           scales: {
             x: {
-              ticks: { maxTicksLimit: 8 },
+              ticks: {
+                maxRotation: 0,
+                autoSkip: false,
+                callback: function(value) {
+                  const idx = Number(value);
+                  return sixHourTickState[idx] || "";
+                }
+              },
               grid: { color: "#f0f1f4" }
             },
             y: {
@@ -279,7 +308,7 @@
         }
       }
 
-      const labels = history.map(p => formatChartLabel(p.t));
+      const labels = history.map(p => p.t);
 
       distanceChart = buildOrUpdateChart(
         distanceChart,
