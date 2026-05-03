@@ -181,6 +181,17 @@
       return d.toLocaleString();
     }
 
+    function formatChartLabel(ts) {
+      const d = new Date(ts);
+      if (Number.isNaN(d.getTime())) return "--";
+      return d.toLocaleString([], {
+        month: "short",
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit"
+      });
+    }
+
     function setMetric(id, text) {
       document.getElementById(id).textContent = text;
     }
@@ -268,10 +279,7 @@
         }
       }
 
-      const labels = history.map(p => {
-        const d = new Date(p.t);
-        return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-      });
+      const labels = history.map(p => formatChartLabel(p.t));
 
       distanceChart = buildOrUpdateChart(
         distanceChart,
